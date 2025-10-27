@@ -1,7 +1,7 @@
 # ☕ Coffee Machine — FastAPI + Vue 3
 
 ## Project Overview
-A dockerized **FastAPI backend** with a **Vue 3 frontend**, simulating a simple coffee machine.
+A **FastAPI backend** with a **Vue 3 frontend**, simulating a simple coffee machine.
 
 ### Features
 - Recipes: **Espresso**, **Double Espresso**, **Americano**, **Ristretto**
