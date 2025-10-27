@@ -1,4 +1,4 @@
-# ☕ Coffee Machine — FastAPI + Vue 3 (Dockerized)
+# ☕ Coffee Machine — FastAPI + Vue 3
 
 ## Project Overview
 A dockerized **FastAPI backend** with a **Vue 3 frontend**, simulating a simple coffee machine.
@@ -67,16 +67,16 @@ docker compose run --rm backend pytest -q
 ## Postman Collection
 Import the following from `/postman/`:
 
-| File | Description |
-|------|--------------|
-| `CoffeeMachine.postman_collection.json`
+| File |
+|------|
+| `CoffeeMachine.postman_collection.json` |
 
 **Required collection variable:**
 ```
 baseUrl = http://localhost:8000
 ```
 
-**For smart collections:**
+**Other variables:**
 ```
 waterAmount = 1000
 coffeeAmount = 100
@@ -108,7 +108,6 @@ docker compose up --build
   docker context use desktop-linux
   ```
 - If frontend buttons don’t respond:
-  - Ensure **both services** are running.
   - Check for free ports **5173** (frontend) and **8000** (backend).
 
 ---
