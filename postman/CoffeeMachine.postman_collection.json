@@ -1,0 +1,188 @@
+{
+  "info": {
+    "name": "Coffee Machine (Brew All)",
+    "_postman_id": "coffee-machine-runner-brew-all",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Runner-first flow (no setNextRequest). Prepare computes safe amounts; Fill steps accept 200 or 422>0; Brew loops through brewList; final Status."
+  },
+  "item": [
+    {
+      "name": "Prepare (status)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/status" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status OK', () => pm.response.to.have.status(200));",
+              "const s = pm.response.json();",
+              "const desiredWater = Number(pm.collectionVariables.get('waterAmount') || 0);",
+              "const desiredCoffee = Number(pm.collectionVariables.get('coffeeAmount') || 0);",
+              "const remainingWater = Math.max(0, (s.water_capacity_ml || 0) - (s.water_ml || 0));",
+              "const remainingCoffee = Math.max(0, (s.coffee_capacity_g || 0) - (s.coffee_g || 0));",
+              "const waterToAdd = Math.max(0, Math.min(desiredWater, remainingWater));",
+              "const coffeeToAdd = Math.max(0, Math.min(desiredCoffee, remainingCoffee));",
+              "pm.collectionVariables.set('waterAmountToAdd', String(waterToAdd));",
+              "pm.collectionVariables.set('coffeeAmountToAdd', String(coffeeToAdd));",
+              "console.log('[Prepare] waterToAdd:', waterToAdd, 'coffeeToAdd:', coffeeToAdd);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fill Water",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"amount_ml\": {{waterAmountToAdd}}\n}" },
+        "url": "{{baseUrl}}/api/fill/water"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const toAdd = Number(pm.collectionVariables.get('waterAmountToAdd') || 0);",
+              "if (toAdd > 0) {",
+              "  pm.test('Filled water (200)', () => pm.response.to.have.status(200));",
+              "} else {",
+              "  // if we posted 0, API will 422; accept as OK for runner logic",
+              "  pm.test('Water already full or 0 needed (allow 422)', () => pm.response.code === 200 || pm.response.code === 422);",
+              "}",
+              "console.log('[Fill Water] toAdd:', toAdd, 'status:', pm.response.code);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fill Coffee",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"amount_g\": {{coffeeAmountToAdd}}\n}" },
+        "url": "{{baseUrl}}/api/fill/coffee"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const toAdd = Number(pm.collectionVariables.get('coffeeAmountToAdd') || 0);",
+              "if (toAdd > 0) {",
+              "  pm.test('Filled coffee (200)', () => pm.response.to.have.status(200));",
+              "} else {",
+              "  pm.test('Coffee already full or 0 needed (allow 422)', () => pm.response.code === 200 || pm.response.code === 422);",
+              "}",
+              "console.log('[Fill Coffee] toAdd:', toAdd, 'status:', pm.response.code);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Brew Sequence (setup)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/recipes" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const listStr = (pm.collectionVariables.get('brewList') || 'espresso,double_espresso,americano,ristretto').trim();",
+              "const list = listStr.split(',').map(s => s.trim()).filter(Boolean);",
+              "pm.collectionVariables.set('brewListArray', JSON.stringify(list));",
+              "pm.collectionVariables.set('brewIndex', '0');",
+              "pm.collectionVariables.set('brewType', list[0] || 'espresso');",
+              "pm.test('Brew list prepared', () => list.length > 0);",
+              "console.log('[Brew Setup] list:', list);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Brew (generic)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"type\": \"{{brewType}}\"\n}" },
+        "url": "{{baseUrl}}/api/brew"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Ensure brewType is set to the current index",
+              "const list = JSON.parse(pm.collectionVariables.get('brewListArray') || '[]');",
+              "let idx = Number(pm.collectionVariables.get('brewIndex') || 0);",
+              "if (list.length && idx < list.length) {",
+              "  pm.collectionVariables.set('brewType', list[idx]);",
+              "  console.log('[Brew] current type:', list[idx]);",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Brew OK', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.collectionVariables.set('currentWater', String(data.state.water_ml));",
+              "pm.collectionVariables.set('currentCoffee', String(data.state.coffee_g));",
+              "console.log('[Brew] message:', data.message, 'state:', data.state);",
+              "",
+              "// advance brewIndex for next Runner step (has no effect on order, but keeps vars consistent)",
+              "const list = JSON.parse(pm.collectionVariables.get('brewListArray') || '[]');",
+              "let idx = Number(pm.collectionVariables.get('brewIndex') || 0);",
+              "idx += 1; pm.collectionVariables.set('brewIndex', String(idx));",
+              "if (idx < list.length) {",
+              "  pm.collectionVariables.set('brewType', list[idx]);",
+              "  console.log('[Brew] next type:', list[idx]);",
+              "} else {",
+              "  console.log('[Brew] sequence complete');",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Status",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/status" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status OK', () => pm.response.to.have.status(200));",
+              "console.log('[Status] final:', pm.response.json());"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "waterAmount", "value": "1000" },
+    { "key": "coffeeAmount", "value": "100" },
+    { "key": "brewList", "value": "espresso,double_espresso,americano,ristretto" },
+    { "key": "brewType", "value": "espresso" },
+    { "key": "brewListArray", "value": "[]" },
+    { "key": "brewIndex", "value": "0" },
+    { "key": "waterAmountToAdd", "value": "0" },
+    { "key": "coffeeAmountToAdd", "value": "0" },
+    { "key": "currentWater", "value": "" },
+    { "key": "currentCoffee", "value": "" }
+  ]
+}

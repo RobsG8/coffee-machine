@@ -1,0 +1,32 @@
+services:
+  backend:
+    build: ./backend
+    container_name: coffee_backend
+    environment:
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-memory}
+      - JSON_PATH=/data/state.json
+      - SQLITE_PATH=/data/state.db
+    volumes:
+      - backend_data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: coffee_frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_DEV_SERVER=true
+
+volumes:
+  backend_data:
