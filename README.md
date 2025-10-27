@@ -64,14 +64,12 @@ docker compose run --rm backend pytest -q
 
 ---
 
-## Postman Collections
-Import one of the following from `/postman/`:
+## Postman Collection
+Import the following from `/postman/`:
 
 | File | Description |
 |------|--------------|
-| `CoffeeMachine.postman_collection.json` | Simple endpoints |
-| `CoffeeMachine.smart-prepare.postman_collection.json` | Smart chained flow |
-| `CoffeeMachine.runner-brew-all.postman_collection.json` | Brews all recipes sequentially |
+| `CoffeeMachine.postman_collection.json`
 
 **Required collection variable:**
 ```
